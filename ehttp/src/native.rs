@@ -3,6 +3,8 @@ use crate::{Request, Response};
 #[cfg(feature = "native-async")]
 use async_channel::{Receiver, Sender};
 
+use std::sync::Arc;
+
 /// Performs a  HTTP request and blocks the thread until it is done.
 ///
 /// Only available when compiling for native.
@@ -23,7 +25,10 @@ use async_channel::{Receiver, Sender};
 /// * A browser extension blocked the request (e.g. ad blocker)
 /// * …
 pub fn fetch_blocking(request: &Request) -> crate::Result<Response> {
-    let mut req = ureq::request(&request.method, &request.url);
+    let agent = ureq::AgentBuilder::new()
+        .tls_connector(Arc::new(native_tls::TlsConnector::new().map_err(|e| e.to_string())?))
+        .build();
+    let mut req = agent.request(&request.method, &request.url);
 
     for (k, v) in &request.headers {
         req = req.set(k, v);

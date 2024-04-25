@@ -5,11 +5,16 @@ use crate::Request;
 use super::Part;
 use crate::types::PartialResponse;
 
+use std::sync::Arc;
+
 pub fn fetch_streaming_blocking(
     request: Request,
     on_data: Box<dyn Fn(crate::Result<Part>) -> ControlFlow<()> + Send>,
 ) {
-    let mut req = ureq::request(&request.method, &request.url);
+    let agent = ureq::AgentBuilder::new()
+        .tls_connector(Arc::new(native_tls::TlsConnector::new().map_err(|e| e.to_string())?))
+        .build();
+    let mut req = agent.request(&request.method, &request.url);
 
     for (k, v) in &request.headers {
         req = req.set(k, v);
